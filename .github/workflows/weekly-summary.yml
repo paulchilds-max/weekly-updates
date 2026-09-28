@@ -1,0 +1,43 @@
+name: Weekly Fireflies Summary
+
+on:
+  schedule:
+    # 00:00 UTC every Sunday. GitHub Actions cron is always UTC.
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+    inputs:
+      post_to_slack:
+        description: "Post the result to Slack"
+        type: boolean
+        default: true
+
+jobs:
+  summarise:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run the weekly summary
+        env:
+          FIREFLIES_API_KEY: ${{ secrets.FIREFLIES_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.post_to_slack }}" = "false" ]; then
+            python main.py --no-post
+          else
+            python main.py
+          fi
